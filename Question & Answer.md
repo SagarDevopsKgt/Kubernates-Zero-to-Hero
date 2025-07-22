@@ -20,7 +20,129 @@ What problems does Kubernetes solve that Docker alone does not support or handle
 * **Problem:** Docker can restart containers on failure, but it lacks sophisticated self-healing mechanisms.
 * **Kubernetes adds:**
 
-  * Automatic **container restarts**, **rescheduling**, and **replica management**.
+Great question! When you run `kubectl apply`, you're triggering a **complex workflow** inside Kubernetes. Here's a breakdown of how the **various components of Kubernetes interact** to process and act on your request:
+
+---
+
+## 🔄 What Happens When You Run `kubectl apply`?
+
+Let’s walk through the **step-by-step flow**:
+
+---
+
+### 🧑‍💻 1. **You Run `kubectl apply -f <file>.yaml`**
+
+* `kubectl` is the **CLI** tool that communicates with the Kubernetes **API server**.
+* The YAML file contains **declarative configuration** (e.g., a Deployment, Service, etc.).
+
+---
+
+### 🔗 2. **kubectl Sends the Request to the API Server**
+
+* It performs a **RESTful API call** to the Kubernetes **API Server**.
+* The API server is the **front door** to your cluster—it authenticates and validates all incoming requests.
+
+---
+
+### 🧰 3. **API Server Validates and Stores the Object**
+
+* Checks for:
+
+  * Syntax and schema validation
+  * Authentication and RBAC permissions
+* Then stores the object in **etcd** (the cluster's key-value store).
+
+---
+
+### 🔔 4. **API Server Notifies Controllers via Watchers**
+
+* Controllers (like the **Deployment Controller**, **ReplicaSet Controller**, etc.) are watching for changes to the cluster state.
+* Once your new object is stored in etcd, a controller notices:
+  “A Deployment has been created/updated!”
+
+---
+
+### ⚙️ 5. **Relevant Controller Takes Action**
+
+* For a `Deployment`, the **Deployment Controller**:
+
+  * Creates or updates a **ReplicaSet**.
+* Then the **ReplicaSet Controller**:
+
+  * Creates or updates **Pods** to match the desired replica count.
+
+---
+
+### 📦 6. **Scheduler Places Pods on Nodes**
+
+* The **Scheduler** watches for unscheduled Pods.
+* It selects the most suitable node (based on resources, taints/tolerations, affinity rules, etc.).
+* It assigns the pod to a node.
+
+---
+
+### 🛠️ 7. **Kubelet (on the Node) Creates the Pod**
+
+* The **kubelet** on the chosen node:
+
+  * Sees the new Pod assigned to it.
+  * Pulls the container image.
+  * Creates the container using **containerd** or **CRI-O** (not Docker in modern clusters).
+  * Sets up networking and storage.
+
+---
+
+### 🛰️ 8. **Pod Becomes Ready and Exposed (If Required)**
+
+* If you've defined a **Service**, the Service object ensures networking rules are created.
+* **CoreDNS**, **kube-proxy**, and **iptables**/eBPF rules are updated for communication.
+
+---
+
+### ✅ 9. **You Can Observe the Result**
+
+* Run:
+
+  ```bash
+  kubectl get pods
+  kubectl get svc
+  kubectl describe deployment
+  ```
+* Kubernetes ensures the **actual state matches the desired state** defined in your YAML file.
+
+---
+
+## 📊 Summary Diagram (Text-Based)
+
+```plaintext
+kubectl apply --> API Server --> etcd (stores config)
+                           ↓
+                     Controllers (Deployment, ReplicaSet)
+                           ↓
+                      Scheduler (assigns Pod to node)
+                           ↓
+                  Kubelet (runs Pod on Node via container runtime)
+                           ↓
+             Service / Networking / DNS / Load Balancing
+```
+
+---
+
+## 🧠 Key Components Involved:
+
+| Component          | Role                                                        |
+| ------------------ | ----------------------------------------------------------- |
+| `kubectl`          | CLI tool to send resource definitions to the API            |
+| API Server         | Validates requests, updates etcd, triggers controllers      |
+| etcd               | Key-value store holding cluster state                       |
+| Controllers        | Ensure desired state (e.g., Deployment → ReplicaSet → Pods) |
+| Scheduler          | Assigns pods to nodes                                       |
+| Kubelet            | Creates and manages pods on individual nodes                |
+| Container Runtime  | Pulls and runs containers (containerd or CRI-O)             |
+| CoreDNS/kube-proxy | Manage service discovery and networking                     |
+
+
+
   * If a container or node fails, K8s automatically moves workloads to healthy nodes.
 
 ---
