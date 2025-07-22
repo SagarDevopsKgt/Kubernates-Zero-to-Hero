@@ -138,4 +138,7 @@
 - Disaster recovery planning
 - Cluster scaling and high availability
 
+
+<img width="940" height="1306" alt="image" src="https://github.com/user-attachments/assets/2885fd92-3335-4d06-a05b-e90d9652bc3a" />
+
 ---
